@@ -1,25 +1,21 @@
-# Granny HD Mobile — original material test prototype
+# Granny HD Mobile
 
-This is a **standalone Unity 2021.3.11f1 Android prototype**, not a modified Granny game. It uses original test-room geometry, a safe, a crate, a metal plate, and a first-person controller.
+**Current build path: Godot 4.4.1** — free, open-source, no Unity license necessary.
 
-## Current GitHub version
+[**Open Godot Android APK builds**](https://github.com/Cheems-gta/Granny-HD/actions/workflows/godot-android.yml)
 
-The original 46 MB texture bundle is **not included** because it could not be uploaded through the connected text-file interface. Until it is added, the scene uses clearly labelled **flat placeholder materials**. This repository does not contain any unpacked copyrighted game assets or Unity license.
+The active Android prototype lives in [`godot/`](./godot/). It is an **original standalone 3D test room**, not the original Granny game or a modified APK.
 
-For full candidate PBR textures, you can add the PNGs later under `Assets/GrannyHD/Textures/<MaterialName>/Albedo.png` for each of: Floor, Walls, Ceiling, SafeBody, SafeDoor, Crate, CrateMetal, SteelPlate. These are user-created replacement textures, not original game resources.
+## Godot v0.3 features
 
-## Cloud build
+- Original dark room with procedural weathered materials
+- Mobile first-person touch movement and camera
+- Interactive safe and wooden crate
+- Metal panel, old television, and test furnishings
+- Android ARM64 debug APK exported with Godot CI
 
-Workflow: `.github/workflows/android-apk.yml`. It runs on commits to `main` or by manual dispatch. It uses GameCI / Unity Builder with Unity 2021.3.11f1, Android ARM64, and IL2CPP.
+**Cloud build status is not confirmed until the Godot Actions run succeeds.** If successful, download the `GrannyHD-Godot-Android-Debug` artifact and extract the APK from it. It needs no GitHub Actions secrets and no Unity activation.
 
-A valid Unity license must first be configured as the GitHub Actions **repository secret** `UNITY_LICENSE`. Never commit license text, passwords, `.ulf` files, or other secrets to a public repository. The cloud workflow intentionally stops with a readable message if this secret is missing.
+The earlier `Assets/`, `Packages/` and `ProjectSettings/` folders are the archived **Unity** experiment. They are not part of the current Godot build. The original 2K candidate textures have not been uploaded to this public repository; the Godot v0.3 room uses **procedurally generated stand-in materials**.
 
-When a build succeeds, download artifact `GrannyHD-Android-Prototype` from the relevant GitHub Actions run. This repository has **not been tested through Unity yet**. The first run is expected to reveal any missing prerequisites or compile errors.
-
-## Controls
-
-On phone: left screen drag to move, right screen drag to look, USE to open/close safe door or crate lid. On PC: WASD + mouse, E to interact.
-
-## Copyright and publication
-
-Do not publish the original Granny APK, its extracted copyrighted resources, or a modified APK as though you own them. This is a standalone technical demonstration and must use original or authorized assets.
+See [Godot project instructions](./godot/README.md) for the exact workflow and touch controls. Do not publish extracted copyrighted game assets or any secrets.
