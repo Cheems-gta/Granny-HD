@@ -1,0 +1,139 @@
+name: V0.4 HD Android APK (real 40-texture pack)
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: Build V0.4 with original HD PBR materials
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    container:
+      image: barichello/godot-ci:4.4.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Godot templates and Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "HOME=$HOME; ANDROID_HOME=${ANDROID_HOME:-unset}"
+          godot --version
+          test -s godot/project.godot
+          test -s godot/export_presets.cfg
+          export GODOT_VERSION=4.4.1.stable
+          SOURCE_TEMPLATES="/root/.local/share/godot/export_templates/$GODOT_VERSION"
+          TARGET_TEMPLATES="$HOME/.local/share/godot/export_templates/$GODOT_VERSION"
+          test -s "$SOURCE_TEMPLATES/android_debug.apk"
+          mkdir -p "$TARGET_TEMPLATES" "$HOME/.config/godot"
+          if [ "$SOURCE_TEMPLATES" != "$TARGET_TEMPLATES" ]; then
+            cp -a "$SOURCE_TEMPLATES/." "$TARGET_TEMPLATES/"
+          fi
+          test -s "$TARGET_TEMPLATES/android_debug.apk"
+          if [ "$HOME" != "/root" ] && [ -d /root/.config/godot ]; then
+            cp -a /root/.config/godot/. "$HOME/.config/godot/"
+          fi
+          cat > "$HOME/.config/godot/editor_settings-4.4.tres" <<'EOF'
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/java_sdk_path = "/usr/lib/jvm/java-17-openjdk-amd64"
+          export/android/android_sdk_path = "/usr/lib/android-sdk"
+          export/android/debug_keystore = "/root/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          export/android/shutdown_adb_on_exit = false
+          EOF
+          test -s /root/debug.keystore
+          test -d /usr/lib/jvm/java-17-openjdk-amd64
+          sdkmanager --sdk_root="/usr/lib/android-sdk" "platform-tools" "build-tools;34.0.0" "platforms;android-34"
+          test -d /usr/lib/android-sdk/build-tools/34.0.0
+          echo "Installed Godot 4.4.1 export templates and Android SDK 34 build tools."
+
+      - name: Download and validate the 40 real PBR texture PNGs
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/Cheems-gta/Granny-HD/releases/download/v0.4-textures/Granny_HD_Godot_V0_4_Materials.zip"
+          echo "Material release required: $url"
+          if ! curl --fail --location --retry 3 --connect-timeout 20 --max-time 420 -o /tmp/granny-hd-materials.zip "$url"; then
+            echo "::error title=Missing HD material release::Upload Granny_HD_Godot_V0_4_Materials.zip as an asset to the public GitHub Release with tag v0.4-textures. No fake procedural fallback APK will be built."
+            exit 1
+          fi
+          echo "27dd4f261036d93c832118c302a08298bda56807966bc99a5aad84b2dc9c818f  /tmp/granny-hd-materials.zip" | sha256sum -c -
+          unzip -q /tmp/granny-hd-materials.zip -d godot
+          for name in Floor Walls Ceiling SafeBody SafeDoor Crate CrateMetal SteelPlate; do
+            for channel in Albedo Normal AO Metallic Roughness; do
+              test -s "godot/textures/$name/$channel.png" || { echo "::error::Missing real PBR map $name/$channel.png"; exit 1; }
+            done
+          done
+          echo "All eight sets and forty image files verified, no placeholders."
+
+      - name: Import Godot project and check for script errors
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --verbose --path godot --editor --import 2>&1 | tee build/import.log
+
+      - name: Export Android debug APK (diagnostic)
+        shell: bash
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /root/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          set -euo pipefail
+          echo "Godot: $(godot --version)"
+          echo "Java: $(java -version 2>&1 | head -1)"
+          test -f /root/debug.keystore
+          test -s /root/.local/share/godot/export_templates/4.4.1.stable/android_debug.apk
+          test -x /usr/lib/android-sdk/build-tools/34.0.0/apksigner
+          keytool -list -keystore /root/debug.keystore -storepass android -alias androiddebugkey > /dev/null
+          echo "Android signing prerequisites confirmed."
+          set +e
+          godot --headless --verbose --path godot --export-debug "Android" "$GITHUB_WORKSPACE/build/GrannyHD_Godot_V0.4_PBR_Debug.apk" > build/export.log 2>&1
+          status=$?
+          set -e
+          cat build/export.log
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Earliest Godot Android export errors"
+            grep -nEi 'ERROR:|error:|cannot|could not|missing|invalid|failed|no export' build/export.log | head -35 || true
+            echo "::endgroup::"
+            echo "### Android export failed: first relevant log lines" >> "$GITHUB_STEP_SUMMARY"
+            echo '~~~text' >> "$GITHUB_STEP_SUMMARY"
+            grep -nEi 'ERROR:|error:|cannot|could not|missing|invalid|failed|no export' build/export.log | head -35 >> "$GITHUB_STEP_SUMMARY" || true
+            echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+            first=$(grep -iEm1 'ERROR:|error:|cannot|could not|missing|invalid|failed|no export' build/export.log | cut -c1-240 || true)
+            echo "::error title=Godot export blocked::${first:-See first error in Job Summary or export.log artifact}"
+            exit "$status"
+          fi
+          test -s build/GrannyHD_Godot_V0.4_PBR_Debug.apk
+          ls -lh build/*.apk
+
+      - name: Upload APK for mobile install
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GrannyHD-V0.4-HD-Android-Debug
+          path: build/GrannyHD_Godot_V0.4_PBR_Debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build diagnostics even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GrannyHD-V0.4-Build-Logs
+          path: |
+            build/import.log
+            build/export.log
+          if-no-files-found: warn
+          retention-days: 7
