@@ -1,19 +1,14 @@
-name: Godot Android APK (no Unity license)
+name: Legacy V0.3 Godot prototype (no HD textures)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - "godot/**"
-      - ".github/workflows/godot-android.yml"
 
 permissions:
   contents: read
 
 jobs:
   android-debug:
-    name: Build original Godot test room APK
+    name: Legacy source-only test APK (use V0.4 HD workflow instead)
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     container:
