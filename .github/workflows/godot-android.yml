@@ -1,0 +1,58 @@
+name: Godot Android APK (no Unity license)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "godot/**"
+      - ".github/workflows/godot-android.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  android-debug:
+    name: Build original Godot test room APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    container:
+      image: barichello/godot-ci:4.4.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Godot version and project files
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --version
+          test -s godot/project.godot
+          test -s godot/export_presets.cfg
+          test -s godot/scripts/main.gd
+          test -s godot/scripts/player.gd
+          echo "Independent source-only Godot project present; no Unity license required."
+
+      - name: Import resources and verify project scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path godot --editor --import
+
+      - name: Export signed Android debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --path godot --export-debug "Android" "$GITHUB_WORKSPACE/build/GrannyHD_Godot_Prototype_v0.3.apk"
+          test -s build/GrannyHD_Godot_Prototype_v0.3.apk
+          ls -lh build/*.apk
+
+      - name: Upload APK for mobile install
+        uses: actions/upload-artifact@v4
+        with:
+          name: GrannyHD-Godot-Android-Debug
+          path: build/GrannyHD_Godot_Prototype_v0.3.apk
+          if-no-files-found: error
+          retention-days: 14
