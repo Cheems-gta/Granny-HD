@@ -67,7 +67,7 @@ jobs:
           mkdir -p build
           godot --headless --verbose --path godot --editor --import 2>&1 | tee build/import.log
 
-      - name: Export Android debug APK
+      - name: Export Android debug APK (diagnostic)
         shell: bash
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: /root/debug.keystore
@@ -75,7 +75,30 @@ jobs:
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           set -euo pipefail
-          godot --headless --verbose --path godot --export-debug "Android" "$GITHUB_WORKSPACE/build/GrannyHD_Godot_Prototype_v0.3.apk" 2>&1 | tee build/export.log
+          echo "Godot: $(godot --version)"
+          echo "Java: $(java -version 2>&1 | head -1)"
+          test -f /root/debug.keystore
+          test -s /root/.local/share/godot/export_templates/4.4.1.stable/android_debug.apk
+          test -x /usr/lib/android-sdk/build-tools/34.0.0/apksigner
+          keytool -list -keystore /root/debug.keystore -storepass android -alias androiddebugkey > /dev/null
+          echo "Android signing prerequisites confirmed."
+          set +e
+          godot --headless --verbose --path godot --export-debug "Android" "$GITHUB_WORKSPACE/build/GrannyHD_Godot_Prototype_v0.3.apk" > build/export.log 2>&1
+          status=$?
+          set -e
+          cat build/export.log
+          if [ "$status" -ne 0 ]; then
+            echo "::group::Earliest Godot Android export errors"
+            grep -nEi 'ERROR:|error:|cannot|could not|missing|invalid|failed|no export' build/export.log | head -35 || true
+            echo "::endgroup::"
+            echo "### Android export failed: first relevant log lines" >> "$GITHUB_STEP_SUMMARY"
+            echo '~~~text' >> "$GITHUB_STEP_SUMMARY"
+            grep -nEi 'ERROR:|error:|cannot|could not|missing|invalid|failed|no export' build/export.log | head -35 >> "$GITHUB_STEP_SUMMARY" || true
+            echo '~~~' >> "$GITHUB_STEP_SUMMARY"
+            first=$(grep -iEm1 'ERROR:|error:|cannot|could not|missing|invalid|failed|no export' build/export.log | cut -c1-240 || true)
+            echo "::error title=Godot export blocked::${first:-See first error in Job Summary or export.log artifact}"
+            exit "$status"
+          fi
           test -s build/GrannyHD_Godot_Prototype_v0.3.apk
           ls -lh build/*.apk
 
