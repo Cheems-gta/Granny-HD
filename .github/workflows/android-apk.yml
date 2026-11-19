@@ -1,0 +1,60 @@
+name: Granny HD Android prototype
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Assets/**'
+      - 'Packages/**'
+      - 'ProjectSettings/**'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build source-only test APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Check Unity license secret
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -z "$UNITY_LICENSE" ]; then
+            echo "::error::UNITY_LICENSE is not configured. Add a legitimate Unity license through repository Actions secrets."
+            exit 1
+          fi
+          echo "Unity license secret is present."
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: unity-2021-android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            unity-2021-android-
+
+      - name: Build APK with Unity GameCI
+        uses: game-ci/unity-builder@v6
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          projectPath: .
+          unityVersion: 2021.3.11f1
+          targetPlatform: Android
+          androidExportType: androidPackage
+          buildMethod: CloudBuildAndroid.Build
+
+      - name: Upload APK artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: GrannyHD-Android-Prototype
+          path: build/Android/*.apk
+          if-no-files-found: error
