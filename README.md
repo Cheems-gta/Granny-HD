@@ -1,3 +1,15 @@
+## V0.6 — connected rooms, 59 PBR material sets (Android cloud build)
+
+The latest full original Godot project ZIP is **Granny_HD_Godot_V0_6_Connected_House_Prototype.zip** (295 PNGs). The zip must be uploaded as an asset on a public Release with tag `v0.6-source` before cloud compilation, because the large textures are not committed to GitHub.
+
+- [中文：手机构建 V0.6 APK 的步骤](./godot/V06_ANDROID_BUILD_CN.md)
+- [V0.6 Android cloud-build workflow](./.github/workflows/godot-v06-android.yml)
+- [GitHub Actions builds](https://github.com/Cheems-gta/Granny-HD/actions/workflows/godot-v06-android.yml)
+
+**Current status:** workflow committed; APK build and device execution unverified. This is an independent prototype, not the proprietary original Granny APK.
+
+---
+
 # Granny HD Mobile — Godot 4.4.1
 
 This repository hosts an **independent, original Android 3D material-test project** (not a modified proprietary Granny APK).
