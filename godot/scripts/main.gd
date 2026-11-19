@@ -1,7 +1,7 @@
 extends Node3D
 
 # This scene is independent/original. It does not load any original Granny assets.
-const AGED_SHADER = preload("res://shaders/aged_surface.gdshader")
+const MATERIAL_LIBRARY = preload("res://scripts/material_library.gd")
 const PLAYER_SCRIPT = preload("res://scripts/player.gd")
 const PROP_SCRIPT = preload("res://scripts/interactable.gd")
 
@@ -14,16 +14,8 @@ func _ready() -> void:
     _create_player()
     _create_hud()
 
-func _material(color: Color, grime: Color, pattern: int, rough: float, metallic: float = 0.0) -> ShaderMaterial:
-    var m: ShaderMaterial = ShaderMaterial.new()
-    m.shader = AGED_SHADER
-    m.set_shader_parameter("base_color", color)
-    m.set_shader_parameter("dust_color", grime)
-    m.set_shader_parameter("material_kind", pattern)
-    m.set_shader_parameter("surface_roughness", rough)
-    m.set_shader_parameter("metallic_level", metallic)
-    m.set_shader_parameter("pattern_scale", 6.0)
-    return m
+func _hd(material_name: String, uv_tile: Vector2 = Vector2.ONE) -> StandardMaterial3D:
+    return MATERIAL_LIBRARY.from_pack(material_name, uv_tile)
 
 func _box(parent_node: Node3D, title: String, at: Vector3, size: Vector3, material: Material, target: Node3D = null) -> StaticBody3D:
     var body: StaticBody3D = StaticBody3D.new()
@@ -50,55 +42,58 @@ func _create_environment() -> void:
     world.name = "Cold low-light environment"
     var env: Environment = Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color(0.025, 0.035, 0.05)
+    env.background_color = Color(0.10, 0.087, 0.078)
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color(0.17, 0.22, 0.28)
-    env.ambient_light_energy = 0.5
+    env.ambient_light_color = Color(0.34, 0.33, 0.32)
+    env.ambient_light_energy = 0.65
     env.fog_enabled = true
-    env.fog_light_color = Color(0.11, 0.17, 0.22)
-    env.fog_density = 0.018
+    env.fog_light_color = Color(0.23, 0.22, 0.21)
+    env.fog_density = 0.004
     world.environment = env
     add_child(world)
     var light: OmniLight3D = OmniLight3D.new()
     light.name = "Ceiling light"
     light.position = Vector3(0.4, 2.83, 0)
-    light.light_color = Color(0.68, 0.82, 1.0)
-    light.light_energy = 1.65
-    light.omni_range = 10.0
+    light.light_color = Color(0.95, 0.91, 0.82)
+    light.light_energy = 2.1
+    light.omni_range = 12.0
     light.shadow_enabled = true
     add_child(light)
     var lamp_material: StandardMaterial3D = StandardMaterial3D.new()
     lamp_material.albedo_color = Color(0.62, 0.78, 0.95)
     lamp_material.emission_enabled = true
-    lamp_material.emission = Color(0.35, 0.52, 0.75)
+    lamp_material.emission = Color(0.55, 0.50, 0.39)
     _box(self, "Ceiling bulb", Vector3(0.4, 2.86, 0), Vector3(0.22, 0.14, 0.22), lamp_material)
 
 func _create_room() -> void:
-    var floor_mat: Material = _material(Color(0.28,0.28,0.30), Color(0.08,0.08,0.095), 1, 0.53)
-    var wall_mat: Material = _material(Color(0.42,0.43,0.43), Color(0.14,0.15,0.15), 3, 0.94)
-    var ceiling_mat: Material = _material(Color(0.20,0.19,0.19), Color(0.06,0.07,0.08), 1, 0.84)
-    var timber: Material = _material(Color(0.39,0.30,0.24), Color(0.10,0.085,0.077), 1, 0.83)
+    var floor_mat: Material = _hd("Floor", Vector2(4.5, 4.5))
+    var wall_mat: Material = _hd("Walls", Vector2(4.5, 1.75))
+    var ceiling_mat: Material = _hd("Ceiling", Vector2(4.0, 4.0))
+    var timber: Material = _hd("Crate")
     _box(self, "Wet aged floor", Vector3(0,-0.2,0), Vector3(9,0.4,9), floor_mat)
     _box(self, "Ceiling", Vector3(0,3.05,0), Vector3(9,0.2,9), ceiling_mat)
     _box(self, "North wall", Vector3(0,1.5,4.5), Vector3(9,3,.22), wall_mat)
     _box(self, "South wall", Vector3(0,1.5,-4.5), Vector3(9,3,.22), wall_mat)
     _box(self, "West wall", Vector3(-4.5,1.5,0), Vector3(.22,3,9), wall_mat)
     _box(self, "East wall", Vector3(4.5,1.5,0), Vector3(.22,3,9), wall_mat)
+    for z in [-4.28, 4.28]:
+        _box(self, "Wood skirting board", Vector3(0, 0.12, z), Vector3(8.6, .24, .15), timber)
+        _box(self, "Upper wall trim", Vector3(0, 2.82, z), Vector3(8.6, .12, .14), timber)
     # Door, old TV and bench are generic props in the original test room.
     _box(self, "Old doorway frame left", Vector3(-0.9,1.2,4.3), Vector3(.18,2.4,.23), timber)
     _box(self, "Old doorway frame right", Vector3(0.9,1.2,4.3), Vector3(.18,2.4,.23), timber)
     _box(self, "Doorway lintel", Vector3(0,2.45,4.3), Vector3(1.98,.17,.23), timber)
     _box(self, "Bench base", Vector3(-3.3,.35,-.25), Vector3(1.2,.7,2.1), timber)
     _box(self, "Old TV cabinet", Vector3(-3.3,.65,2.5), Vector3(1.35,1.3,.7), timber)
-    var tv_mat: Material = _material(Color(.15,.15,.16), Color(.04,.04,.05), 0,.45)
+    var tv_mat: Material = _hd("CrateMetal")
     _box(self, "Old CRT screen", Vector3(-3.3,1.55,2.5), Vector3(.8,.63,.45), tv_mat)
 
 func _create_props() -> void:
-    var safe_outer: Material = _material(Color(.33,.38,.40), Color(.08,.09,.09), 2,.53,.64)
-    var safe_inner: Material = _material(Color(.28,.29,.31), Color(.10,.10,.11), 2,.43,.82)
-    var wood: Material = _material(Color(.42,.30,.19), Color(.12,.08,.06), 1,.77)
-    var metal: Material = _material(Color(.28,.25,.23), Color(.08,.06,.05), 2,.58,.67)
-    var plate: Material = _material(Color(.32,.29,.28), Color(.14,.09,.06), 2,.52,.75)
+    var safe_outer: Material = _hd("SafeBody")
+    var safe_inner: Material = _hd("SafeDoor")
+    var wood: Material = _hd("Crate")
+    var metal: Material = _hd("CrateMetal")
+    var plate: Material = _hd("SteelPlate")
     var safe: Node3D = Node3D.new()
     safe.name = "Interactive safe"
     safe.set_script(PROP_SCRIPT)
@@ -132,6 +127,7 @@ func _create_props() -> void:
     _box(self,"Rusted metal panel",Vector3(2.95,1.25,4.28),Vector3(1.55,1.5,.11),plate)
     _box(self,"Panel left bracket",Vector3(2.20,1.25,4.15),Vector3(.07,1.62,.2),metal)
     _box(self,"Panel right bracket",Vector3(3.70,1.25,4.15),Vector3(.07,1.62,.2),metal)
+    _box(self,"Lower metal brace",Vector3(2.95,.54,4.12),Vector3(1.58,.10,.19),metal)
 
 func _create_player() -> void:
     _player = CharacterBody3D.new()
@@ -157,7 +153,7 @@ func _create_hud() -> void:
     root.mouse_filter = Control.MOUSE_FILTER_IGNORE
     canvas.add_child(root)
     var header: Label = Label.new()
-    header.text = "Granny HD  |  GODOT TEST ROOM  |  Original procedural materials"
+    header.text = "Granny HD  |  REAL PBR TEXTURES  |  V0.4 MATERIAL TEST"
     header.position = Vector2(18,14)
     root.add_child(header)
     var guide: Label = Label.new()
